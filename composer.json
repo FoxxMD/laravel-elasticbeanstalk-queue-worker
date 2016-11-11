@@ -1,0 +1,23 @@
+{
+    "name": "foxxmd/laravel-elasticbeanstalk-queue-worker",
+    "description": "Deploy your Laravel application as a queue worker on AWS ElasticBeanstalk",
+    "keywords": ["laravel","aws","elasticbeanstalk","worker","queue","beanstalkd","supervisor"],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "FoxxMD",
+            "email": "FoxxMD@users.noreply.github.com"
+        }
+    ],
+  "require": {
+    "illuminate/console": "~5.1",
+    "illuminate/support": "~5.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "FoxxMD\\LaravelElasticBeanstalkQueueWorker\\": "src/"
+    }
+  },
+    "minimum-stability": "dev"
+}
