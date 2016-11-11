@@ -79,8 +79,8 @@ All queues are configured using EB envronmental variables with the following syn
 ```
 queue[QueueName]     = [queueName]   # Required. The name of the queue that should be run.
 [QueueName]NumProcs  = [value]       # Optional. The number of instances supervisor should run for this queue. Defaults to 1
-[QueueName]Tries     = [value]       # Optional. The number of times supervisor should attempt to run in the event an unexpected exit code occurs. Defaults to 5
-[QueueName]Sleep     = [value]       # Optional. The number of seconds supervisor should sleep if no new jobs are in the queue. Defaults to 5
+[QueueName]Tries     = [value]       # Optional. The number of times the worker should attempt to run in the event an unexpected exit code occurs. Defaults to 5
+[QueueName]Sleep     = [value]       # Optional. The number of seconds the worker should sleep if no new jobs are in the queue. Defaults to 5
 [QueueName]StartSecs = [value]       # Optional. How long a job should run for to be considered successful. Defaults to 1
 ```
 
