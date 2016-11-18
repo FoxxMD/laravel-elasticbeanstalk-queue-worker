@@ -1,7 +1,8 @@
 <?php
 
-function generateProgram($connection, $queue, $tries, $sleep, $numProcs, $startSecs){
-    $program = <<<EOT
+function generateProgram($connection, $queue, $tries, $sleep, $numProcs, $startSecs)
+{
+	$program = <<<EOT
 
 [program:$queue]
 command=sudo php artisan doctrine:queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --daemon
@@ -13,42 +14,118 @@ numprocs=$numProcs
 startsecs=$startSecs
 
 EOT;
-    return $program;
+
+	return $program;
 }
 
-//relative dir is not working for some reason, need to test them all!
-$envLocation = '';
-if(file_exists('/var/app/ondeck/jsonEnv')){
-    $envLocation = '/var/app/ondeck/jsonEnv';
-} else if(file_exists('/var/app/current/jsonEnv')){
-    $envLocation = '/var/app/current/jsonEnv';
-}
-$vars = json_decode(file_get_contents($envLocation), true);
-$envVars = array_change_key_case($vars); // convert keys to lower case so environmental variables don't have to be case-sensitive
+function getEBWorkerConfig($path)
+{
+	if (null === $path)
+	{
+		return null;
+	}
+	else
+	{
+		$filePath = $path . '/elasticbeanstalkworker.php';
+		echo 'File path for worker config: ' . $filePath . PHP_EOL;
+		if (is_file($filePath) && is_readable($filePath))
+		{
+			return include($filePath);
+		}
+		echo 'Worker config is not a file or is not readable. Skipping.' . PHP_EOL;
 
-$programs = '';
-
-foreach($envVars as $key => $val){
-    if(strpos($key, 'queue') !== false && strpos($key, 'queue_driver') === false){
-        $tryKey = substr($key, 10) . 'tries'; //get queue $key + tries to see if custom tries is set
-        $sleepKey = substr($key, 5) . 'sleep'; //get queue $key + sleep to see if custom sleep is set
-        $numProcKey = substr($key, 5) . 'numprocs'; //get queue $key + num process to see if custom number of processes is set
-        $startSecsKey = substr($key, 5) . 'startsecs'; //get queue $key + number of seconds the process should stay up
-
-        $tries = isset($envVars[$tryKey]) ? $envVars[$tryKey] : 5;
-        $sleep = isset($envVars[$sleepKey]) ? $envVars[$sleepKey] : 5;
-        $numProcs = isset($envVars[$numProcKey]) ? $envVars[$numProcKey] : 1;
-        $startSecs = isset($envVars[$startSecsKey]) ? $envVars[$startSecsKey] : 1;
-        $connection = isset($envVars['queue_driver']) ? $envVars['queue_driver'] : 'beanstalkd';
-        $programs .= generateProgram($connection, $val, $tries, $sleep, $numProcs, $startSecs);
-    }
-}
-$superLocation = '';
-if(file_exists('/var/app/ondeck/.ebextensions/supervisord.conf')){
-    $superLocation = '/var/app/ondeck/.ebextensions/supervisord.conf';
-} else if(file_exists('/var/app/current/.ebextensions/supervisord.conf')){
-    $superLocation = '/var/app/current/.ebextensions/supervisord.conf';
+		return null;
+	}
 }
 
-file_put_contents($superLocation, $programs.PHP_EOL, FILE_APPEND);
+echo 'Starting supervisor configuration parsing.' . PHP_EOL;
+
+// determine what directory we are in
+$deployDirectory = null;
+if (is_dir('/var/app/ondeck'))
+{
+	$deployDirectory = '/var/app/ondeck';
+}
+else if (is_dir('/var/app/current'))
+{
+	$deployDirectory = '/var/app/current';
+}
+
+// set location of our clean supervisor config
+$superLocation = $deployDirectory . '/.ebextensions/supervisord.conf';
+
+// determine config directory
+$configDirectory = null;
+if (is_dir($deployDirectory . '/config'))
+{
+	$configDirectory = $deployDirectory . '/config';
+}
+else
+{
+	echo 'Could not find project configuration directory, oh well.' . PHP_EOL;
+}
+
+// determine user supervisord.conf location
+$relativeConfigFilePath = null;
+if (null !== $workerConfig = getEBWorkerConfig($configDirectory))
+{
+	$relativeConfigFilePath = $workerConfig['supervisorConfigPath'];
+}
+
+if (null !== $relativeConfigFilePath)
+{
+	$absoluteConfigFilePath = $deployDirectory . '/' . $relativeConfigFilePath;
+	echo 'User-supplied supervisor config path: ' . $absoluteConfigFilePath . PHP_EOL;
+	$programs = file_get_contents($relativeConfigFilePath);
+	if (false === $programs)
+	{
+		echo 'Tried to parse user-supplied supervisord.conf but it failed!' . PHP_EOL;
+		exit(1);
+	}
+	else
+	{
+		echo 'Found user supervisor.conf file! Using it instead of generating from environmental variables.' . PHP_EOL;
+	}
+	$writeType = 0;
+}
+else
+{
+	$writeType = FILE_APPEND;
+
+	if (null !== $relativeConfigFilePath)
+	{
+		echo 'Found path for user-supplied supervisord.conf but it was not a valid file. Continuing with parsing from environmental variables.' . PHP_EOL;
+	}
+	else
+	{
+		echo 'No user-supplied supervisord.conf found. Generating one from environmental variables.' . PHP_EOL;
+	}
+
+	$envLocation = $deployDirectory . '/jsonEnv';
+	$vars        = json_decode(file_get_contents($envLocation), true);
+	$envVars     = array_change_key_case($vars); // convert keys to lower case so environmental variables don't have to be case-sensitive
+
+	$programs = '';
+
+	foreach ($envVars as $key => $val)
+	{
+		if (strpos($key, 'queue') !== false && strpos($key, 'queue_driver') === false)
+		{
+			$tryKey       = substr($key, 10) . 'tries'; //get queue $key + tries to see if custom tries is set
+			$sleepKey     = substr($key, 5) . 'sleep'; //get queue $key + sleep to see if custom sleep is set
+			$numProcKey   = substr($key, 5) . 'numprocs'; //get queue $key + num process to see if custom number of processes is set
+			$startSecsKey = substr($key, 5) . 'startsecs'; //get queue $key + number of seconds the process should stay up
+
+			$tries      = isset($envVars[ $tryKey ]) ? $envVars[ $tryKey ] : 5;
+			$sleep      = isset($envVars[ $sleepKey ]) ? $envVars[ $sleepKey ] : 5;
+			$numProcs   = isset($envVars[ $numProcKey ]) ? $envVars[ $numProcKey ] : 1;
+			$startSecs  = isset($envVars[ $startSecsKey ]) ? $envVars[ $startSecsKey ] : 1;
+			$connection = isset($envVars['queue_driver']) ? $envVars['queue_driver'] : 'beanstalkd';
+			$programs .= generateProgram($connection, $val, $tries, $sleep, $numProcs, $startSecs);
+		}
+	}
+}
+
+
+file_put_contents($superLocation, $programs . PHP_EOL, $writeType);
 
