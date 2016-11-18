@@ -21,7 +21,8 @@ class ElasticBeanstalkQueueWorkerProvider extends ServiceProvider  {
 	public function boot()
 	{
 		$this->publishes([
-			__DIR__.'/.ebextensions' => base_path('/.ebextensions')
+			__DIR__.'/.ebextensions' => base_path('/.ebextensions'),
+			__DIR__.'/elasticbeanstalkworker.php' => config_path('elasticbeanstalkworker.php')
 		], 'ebworker');
 	}
 }
