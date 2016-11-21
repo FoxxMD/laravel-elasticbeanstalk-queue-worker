@@ -12,7 +12,9 @@ Unfortunately that's where the documentation ends. There is no guidance on how t
 
 * **Automated installation of supervisor on first-time deployment**
 * **Automatic updating of supervisor configuration upon deployment**
-* **Parsing of EB environmental variables to generate supervisor config**
+* **Two supervisor configuration deployment options:**
+  * **Parsing of EB environmental variables to generate supervisor config**
+  * **Or using a pre-built supervisor config supplied in project**
 
 # Let's get down to business
 
@@ -72,8 +74,6 @@ QUEUE_DRIVER = [driver]
 
 All queues are configured using EB envronmental variables with the following syntax:
 
-**Note**: keys/values are currently **case-sensitive**
-
 **Note**: brackets are placeholders only, do not use them in your actual configuration
 
 ```
@@ -87,6 +87,32 @@ queue[QueueName]     = [queueName]   # Required. The name of the queue that shou
 Add one `queue[QueueName] = [queueName]` entry in your EB environmental variables for each queue you want to run. The rest of the parameters are optional.
 
 That's it! On your next deploy supervisor will have its configuration updated/generated and start chugging along on your queues.
+
+## Using Your Own `supervisord.conf`
+
+Using your own, pre-built supervisor config file is easy too.
+
+Simply set the location of the file in the published `elasticbeanstalkworker.php` config file:
+
+```php
+<?php
+
+return array(
+	/*
+	 * The path of the supervisord.conf file to be used INSTEAD OF generating one from environmental variables. Note that this can be null if you do not have one.
+	 *
+	 * This path is RELATIVE to the root of your application.
+	 * EX:
+	 * Absolute Path: /Users/dev/coding/MyProject/config/mysupervisord.conf
+	 * Path to use:   config/mysupervisord.conf
+	 */
+	'supervisorConfigPath' => 'config/mysupervisord.conf`
+);
+```
+
+Now during the deploy process your configuration file will be used instead of generating one.
+
+Note: you can check `eb-activity.log` for your EB environment to verify if the deploy process detected and deployed your file. Search for `Starting supervisor configuration parsing.` in the log.
 
 # But how does it work?
 
@@ -102,7 +128,9 @@ Supervisor requires port 9001 to be open if you want to access its web monitor. 
 
 ### 2. Parse Queue Configuration
 
-`parseConfig.php` looks for a json file generated earlier that contains all of the environmental variables configured for elastic beanstalk. It then parses out any queue configurations found (see `Add Queues`) section above and generates a supervisor program for each. The program to be generated looks like this:
+`parseConfig.php` looks for either a user-supplied `supervisord.conf` file specified in configuration. If one exists then it is used.
+
+Otherwise `parseConfig.php` looks for a json file generated earlier that contains all of the environmental variables configured for elastic beanstalk. It then parses out any queue configurations found (see `Add Queues`) section above and generates a supervisor program for each. The program to be generated looks like this:
 
 ```
 [program:$queue]
@@ -125,12 +153,12 @@ Now a bash script `workerDeploy.sh` checks for `IS_WORKER=TRUE` in the EB enviro
 * If it is found
   * And there is no `init.d` script
     * Supervisor is installed using pip and the custom `supervisord` init script in this project is copied to `/etc/init.d`
-    * The generated configuration is copied over the default one at `/etc/supervisord.conf`
+    * Configuration is parsed
     * Supervisor is started
     * Supervisor is set to start at boot
   * And there is an `init.d` script
     * Supervisor is stopped
-    * The generated configuration is copied over the old one at `/etc/supervisord.conf`
+    * Configuration is parsed
     * Laravel artisan is used to restart the queue to refresh the daemon
     * Supervisor is restarted with the new configuration
 
@@ -140,9 +168,7 @@ Now a bash script `workerDeploy.sh` checks for `IS_WORKER=TRUE` in the EB enviro
 This is almost verbatim how I have things setup for another project so some usage is limited because of how it was originally written:
 
 * Queue driver defaults to beanstalkd if not explicitly set
-* Queue parameters in the EB environental variables are case-sensitive
 * There is no way to generate a supervisor program without `--queue=[queue]` right now
-* There is no way to use a pre-generated `supervisord.conf` file right now
 
 All of these are simple fixes though! Check out issues to see these and more and if you need them please make a PR!
 
