@@ -1,11 +1,11 @@
 <?php
 
-function generateProgram($connection, $queue, $tries, $sleep, $numProcs, $startSecs)
+function generateProgram($connection, $queue, $tries, $sleep, $numProcs, $delay, $startSecs)
 {
 	$program = <<<EOT
 
 [program:$queue]
-command=sudo php artisan doctrine:queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --daemon
+command=sudo php artisan doctrine:queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --delay=$delay --daemon
 directory=/var/app/current/
 autostart=true
 autorestart=true
@@ -111,17 +111,19 @@ else
 	{
 		if (strpos($key, 'queue') !== false && strpos($key, 'queue_driver') === false)
 		{
-			$tryKey       = substr($key, 10) . 'tries'; //get queue $key + tries to see if custom tries is set
+			$tryKey       = substr($key, 5) . 'tries'; //get queue $key + tries to see if custom tries is set
 			$sleepKey     = substr($key, 5) . 'sleep'; //get queue $key + sleep to see if custom sleep is set
 			$numProcKey   = substr($key, 5) . 'numprocs'; //get queue $key + num process to see if custom number of processes is set
 			$startSecsKey = substr($key, 5) . 'startsecs'; //get queue $key + number of seconds the process should stay up
+			$delayKey     = substr($key, 5) . 'delay'; //get queue $key + delay in seconds before a job should re-enter the ready queue
 
 			$tries      = isset($envVars[ $tryKey ]) ? $envVars[ $tryKey ] : 5;
 			$sleep      = isset($envVars[ $sleepKey ]) ? $envVars[ $sleepKey ] : 5;
 			$numProcs   = isset($envVars[ $numProcKey ]) ? $envVars[ $numProcKey ] : 1;
 			$startSecs  = isset($envVars[ $startSecsKey ]) ? $envVars[ $startSecsKey ] : 1;
+			$delay      = isset($envVars[ $delayKey]) ? $envVars[ $delayKey ] : 0;
 			$connection = isset($envVars['queue_driver']) ? $envVars['queue_driver'] : 'beanstalkd';
-			$programs .= generateProgram($connection, $val, $tries, $sleep, $numProcs, $startSecs);
+			$programs .= generateProgram($connection, $val, $tries, $sleep, $numProcs, $delay, $startSecs);
 		}
 	}
 }
