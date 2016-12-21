@@ -82,7 +82,7 @@ queue[QueueName]     = [queueName]   # Required. The name of the queue that shou
 [QueueName]Tries     = [value]       # Optional. The number of times the worker should attempt to run in the event an unexpected exit code occurs. Defaults to 5
 [QueueName]Sleep     = [value]       # Optional. The number of seconds the worker should sleep if no new jobs are in the queue. Defaults to 5
 [QueueName]StartSecs = [value]       # Optional. How long a job should run for to be considered successful. Defaults to 1
-[QueueName]Email     = [value]       # Optional. Time in seconds a job should be delayed before returning to the ready queue. Defaults to 0
+[QueueName]Delay     = [value]       # Optional. Time in seconds a job should be delayed before returning to the ready queue. Defaults to 0
 ```
 
 Add one `queue[QueueName] = [queueName]` entry in your EB environmental variables for each queue you want to run. The rest of the parameters are optional.
