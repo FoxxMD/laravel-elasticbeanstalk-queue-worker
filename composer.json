@@ -19,5 +19,12 @@
       "FoxxMD\\LaravelElasticBeanstalkQueueWorker\\": "src/"
     }
   },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "FoxxMD\\LaravelElasticBeanstalkQueueWorker\\ElasticBeanstalkQueueWorkerProvider"
+            ]
+        }
+    },
     "minimum-stability": "dev"
 }
