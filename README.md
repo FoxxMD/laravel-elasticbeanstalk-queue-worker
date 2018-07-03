@@ -135,7 +135,7 @@ Otherwise `parseConfig.php` looks for a json file generated earlier that contain
 
 ```
 [program:$queue]
-command=sudo php artisan doctrine:queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --daemon
+command=sudo php artisan queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --daemon
 directory=/var/app/current/
 autostart=true
 autorestart=true
