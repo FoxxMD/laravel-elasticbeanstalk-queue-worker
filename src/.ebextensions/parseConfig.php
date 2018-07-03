@@ -5,7 +5,7 @@ function generateProgram($connection, $queue, $tries, $sleep, $numProcs, $delay,
 	$program = <<<EOT
 
 [program:$queue]
-command=sudo php artisan doctrine:queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --delay=$delay --daemon
+command=sudo php artisan queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --delay=$delay --daemon
 directory=/var/app/current/
 autostart=true
 autorestart=true
