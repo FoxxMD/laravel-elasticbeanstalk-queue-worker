@@ -1,17 +1,20 @@
 <?php
 
-function generateProgram($connection, $queue, $tries, $sleep, $numProcs, $delay, $startSecs)
+function generateProgram($connection, $queue, $tries, $sleep, $numProcs, $delay, $startSecs, $environmentVal)
 {
+	$queueVal = $queue !== null ? " --queue=$queue ": '';
 	$program = <<<EOT
 
 [program:$queue]
-command=sudo php artisan queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --delay=$delay --daemon
+process_name=%(program_name)s_%(process_num)02d
+command=php artisan queue:work $connection$queueVal--tries=$tries --sleep=$sleep --delay=$delay --daemon
 directory=/var/app/current/
 autostart=true
 autorestart=true
-process_name=$queue-%(process_num)s
 numprocs=$numProcs
 startsecs=$startSecs
+user=webapp
+environment=$environmentVal
 
 EOT;
 
@@ -101,13 +104,28 @@ else
 		echo 'No user-supplied supervisord.conf found. Generating one from environmental variables.' . PHP_EOL;
 	}
 
-	$envLocation = $deployDirectory . '/jsonEnv';
-	$vars        = json_decode(file_get_contents($envLocation), true);
-	$envVars     = array_change_key_case($vars); // convert keys to lower case so environmental variables don't have to be case-sensitive
+	$envLocation  = $deployDirectory . '/jsonEnv';
+	$envVars      = json_decode(file_get_contents($envLocation), true);
+	$lowerEnvVars = array_change_key_case($envVars); // convert keys to lower case so environmental variables don't have to be case-sensitive
+
+	$envKvArray = [];
+	foreach ($envVars as $key => $val) {
+		if(ctype_alnum($val) // alphanumeric doesn't need quotes
+			|| (strpos($val, '"') === 0 && strrpos($val, '"') === count($val) -1)) // if the value is already quoted don't double-quote it
+		{
+			$formattedVal = $val;
+		} else { // otherwise put everything in quotes for environment param http://supervisord.org/configuration.html#program-x-section-values
+			$formattedVal = "\"{$val}\"";
+		}
+		$envKvArray[] = "{$key}={$formattedVal}";
+	}
+	$envKv = implode(',', $envKvArray);
 
 	$programs = '';
 
-	foreach ($envVars as $key => $val)
+	$isBeanstalk = $lowerEnvVars['queue_driver'] === 'beanstalkd';
+
+	foreach ($lowerEnvVars as $key => $val)
 	{
 		if (strpos($key, 'queue') !== false && strpos($key, 'queue_driver') === false)
 		{
@@ -117,13 +135,19 @@ else
 			$startSecsKey = substr($key, 5) . 'startsecs'; //get queue $key + number of seconds the process should stay up
 			$delayKey     = substr($key, 5) . 'delay'; //get queue $key + delay in seconds before a job should re-enter the ready queue
 
-			$tries      = isset($envVars[ $tryKey ]) ? $envVars[ $tryKey ] : 5;
-			$sleep      = isset($envVars[ $sleepKey ]) ? $envVars[ $sleepKey ] : 5;
-			$numProcs   = isset($envVars[ $numProcKey ]) ? $envVars[ $numProcKey ] : 1;
-			$startSecs  = isset($envVars[ $startSecsKey ]) ? $envVars[ $startSecsKey ] : 1;
-			$delay      = isset($envVars[ $delayKey]) ? $envVars[ $delayKey ] : 0;
-			$connection = isset($envVars['queue_driver']) ? $envVars['queue_driver'] : 'beanstalkd';
-			$programs .= generateProgram($connection, $val, $tries, $sleep, $numProcs, $delay, $startSecs);
+			$tries      = isset($lowerEnvVars[ $tryKey ]) ? $lowerEnvVars[ $tryKey ] : 5;
+			$sleep      = isset($lowerEnvVars[ $sleepKey ]) ? $lowerEnvVars[ $sleepKey ] : 5;
+			$numProcs   = isset($lowerEnvVars[ $numProcKey ]) ? $lowerEnvVars[ $numProcKey ] : 1;
+			$startSecs  = isset($lowerEnvVars[ $startSecsKey ]) ? $lowerEnvVars[ $startSecsKey ] : 1;
+			$delay      = isset($lowerEnvVars[ $delayKey ]) ? $lowerEnvVars[ $delayKey ] : 0;
+			// if using beanstalk connection should always be beanstalkd and specify tube in queue, otherwise us queue name as connection
+			$connection = $isBeanstalk ? 'beanstalkd' : $val;
+			// if not using beanstalk we don't need queue probably
+			$queue = $isBeanstalk ? $val : null;
+			$programEnvArray = $envKvArray;
+			// if any vars need to be specific per worker this is where to put them
+			// $programEnvArray[] =
+			$programs   .= generateProgram($connection, $queue, $tries, $sleep, $numProcs, $delay, $startSecs, implode(',', $programEnvArray));
 		}
 	}
 }

@@ -8,6 +8,8 @@ updateSupervisor(){
     cp .ebextensions/supervisord.conf /etc/supervisord.conf
     sudo service supervisord stop
     php /var/app/current/artisan queue:restart # If this worker is running in daemon mode (most likely) we need to restart it with the new build
+    echo "Sleeping a few seconds to make sure supervisor shuts down..." # https://github.com/Supervisor/supervisor/issues/48#issuecomment-2684400
+    sleep 5
     sudo service supervisord start
 }
 
@@ -42,8 +44,6 @@ if test "${ary['IS_WORKER']+isset}" #if key exists
         if [ ${ary['IS_WORKER']} == "'true'" ] #if the value is true
             then
                 echo "Found worker key!"
-                echo "Copying environmental variables to dotenv"
-                cp bashEnv .env
                 echo "Starting worker deploy process...";
 
                 if [ -f /etc/init.d/supervisord ];

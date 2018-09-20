@@ -62,17 +62,17 @@ IS_WORKER = true
 
 ### Set Queue Driver
 
-Set the [driver](https://laravel.com/docs/5.1/queues#introduction) in your your EB envronmental variables:
+Set the [driver](https://laravel.com/docs/5.1/queues#introduction) in your your EB environmental variables:
 
 ```
 QUEUE_DRIVER = [driver]
 ```
 
-**Note: If no `QUEUE_DRIVER` key is present in your EB envronmental variables then `beanstalkd` will be used.**
+**Note: If no `QUEUE_DRIVER` key is present in your EB environmental variables then `beanstalkd` will be used.**
 
 ### Add Queues
 
-All queues are configured using EB envronmental variables with the following syntax:
+All queues are configured using EB environmental variables with the following syntax:
 
 **Note**: brackets are placeholders only, do not use them in your actual configuration
 
@@ -131,17 +131,19 @@ Supervisor requires port 9001 to be open if you want to access its web monitor. 
 
 `parseConfig.php` looks for either a user-supplied `supervisord.conf` file specified in configuration. If one exists then it is used.
 
-Otherwise `parseConfig.php` looks for a json file generated earlier that contains all of the environmental variables configured for elastic beanstalk. It then parses out any queue configurations found (see `Add Queues`) section above and generates a supervisor program for each. The program to be generated looks like this:
+Otherwise `parseConfig.php` looks for a json file generated earlier that contains all of the environmental variables configured for elastic beanstalk. It then parses out any queue configurations found (see `Add Queues`) section above and generates a supervisor program for each as well as supplying each program with all the environmental variables set for EB. The program to be generated looks like this:
 
 ```
 [program:$queue]
-command=sudo php artisan queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --daemon
+command=php artisan queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --daemon
 directory=/var/app/current/
 autostart=true
 autorestart=true
 process_name=$queue-%(process_num)s
 numprocs=$numProcs
 startsecs=$startSecs
+user=webapp
+environment=$environmentVal
 ```
 
 After parsing all queues it then appends the programs to a clean `supervisord.conf` file in the same directory.
@@ -169,7 +171,6 @@ Now a bash script `workerDeploy.sh` checks for `IS_WORKER=TRUE` in the EB enviro
 This is almost verbatim how I have things setup for another project so some usage is limited because of how it was originally written:
 
 * Queue driver defaults to beanstalkd if not explicitly set
-* There is no way to generate a supervisor program without `--queue=[queue]` right now
 
 All of these are simple fixes though! Check out issues to see these and more and if you need them please make a PR!
 
