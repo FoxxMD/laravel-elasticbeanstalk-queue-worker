@@ -2,7 +2,7 @@
 
 function generateProgram($connection, $queue, $tries, $sleep, $numProcs, $delay, $startSecs, $environmentVal)
 {
-	$queueVal = $queue !== null ? " --queue=$queue ": '';
+	$queueVal = $queue !== null ? " --queue=$queue ": ' ';
 	$program = <<<EOT
 
 [program:$queue]
