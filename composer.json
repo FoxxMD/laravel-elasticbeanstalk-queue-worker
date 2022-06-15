@@ -10,15 +10,15 @@
             "email": "FoxxMD@users.noreply.github.com"
         }
     ],
-  "require": {
-    "illuminate/console": "~5.1",
-    "illuminate/support": "~5.1"
-  },
-  "autoload": {
-    "psr-4": {
-      "FoxxMD\\LaravelElasticBeanstalkQueueWorker\\": "src/"
-    }
-  },
+    "require": {
+        "illuminate/console": "5 - 9",
+        "illuminate/support": "5 - 9"
+    },
+    "autoload": {
+        "psr-4": {
+            "FoxxMD\\LaravelElasticBeanstalkQueueWorker\\": "src/"
+        }
+    },
     "extra": {
         "laravel": {
             "providers": [
