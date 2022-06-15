@@ -1,6 +1,6 @@
 <?php
 
-return array(
+return [
     /*
      * The path of the supervisord.conf file to be used INSTEAD OF generating one from environmental variables. Note that this can be null if you do not have one.
      *
@@ -10,4 +10,4 @@ return array(
      * Path you put in 'supervisorConfigPath': config/mysupervisord.conf
      */
     'supervisorConfigPath' => null
-);
+];

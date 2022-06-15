@@ -4,8 +4,8 @@ namespace FoxxMD\LaravelElasticBeanstalkQueueWorker;
 
 use Illuminate\Support\ServiceProvider;
 
-class ElasticBeanstalkQueueWorkerProvider extends ServiceProvider  {
-
+class ElasticBeanstalkQueueWorkerProvider extends ServiceProvider
+{
     /**
      * Register the service provider.
      *
@@ -19,8 +19,9 @@ class ElasticBeanstalkQueueWorkerProvider extends ServiceProvider  {
     public function boot()
     {
         $this->publishes([
-            __DIR__.'/.ebextensions' => base_path('/.ebextensions'),
-            __DIR__.'/elasticbeanstalkworker.php' => config_path('elasticbeanstalkworker.php')
+            __DIR__ . '/.ebextensions' => base_path('/.ebextensions'),
+            __DIR__ . '/.platform' => base_path('/.platform'),
+            __DIR__ . '/elasticbeanstalkworker.php' => config_path('elasticbeanstalkworker.php')
         ], 'ebworker');
     }
 }
