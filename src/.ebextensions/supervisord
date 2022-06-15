@@ -68,54 +68,54 @@ running()
 }
 
 start() {
-        echo "Starting supervisord: "
+    echo "Starting supervisord: "
 
-        if [ -e $PIDFILE ]; then
-		echo "ALREADY STARTED"
-		return 0
-	fi
+    if [ -e $PIDFILE ]; then
+            echo "ALREADY STARTED"
+            return 0
+    fi
 
-	# start supervisord with options from sysconfig (stuff like -c)
-        $SUPERVISORD $OPTIONS
+    # start supervisord with options from sysconfig (stuff like -c)
+    $SUPERVISORD $OPTIONS
 
-	# show initial startup status
-	$SUPERVISORCTL $OPTIONS status
+    # show initial startup status
+    $SUPERVISORCTL $OPTIONS status
 
-	# only create the subsyslock if we created the PIDFILE
-        [ -e $PIDFILE ] && touch $LOCKFILE
+    # only create the subsyslock if we created the PIDFILE
+    [ -e $PIDFILE ] && touch $LOCKFILE
 
-        return 0
+    return 0
 }
 
 stop() {
-        echo -n "Stopping supervisord: "
-        $SUPERVISORCTL $OPTIONS shutdown
-	if [ -n "$WAIT_FOR_SUBPROCESSES" ]; then
-            echo "Waiting roughly 60 seconds for $PIDFILE to be removed after child processes exit"
-            for sleep in  2 2 2 2 4 4 4 4 8 8 8 8 last; do
-                if [ ! -e $PIDFILE ] ; then
-                    echo "Supervisord exited as expected in under $total_sleep seconds"
-                    break
+    echo -n "Stopping supervisord: "
+    $SUPERVISORCTL $OPTIONS shutdown
+    if [ -n "$WAIT_FOR_SUBPROCESSES" ]; then
+        echo "Waiting roughly 60 seconds for $PIDFILE to be removed after child processes exit"
+        for sleep in  2 2 2 2 4 4 4 4 8 8 8 8 last; do
+            if [ ! -e $PIDFILE ] ; then
+                echo "Supervisord exited as expected in under $total_sleep seconds"
+                break
+            else
+                if [[ $sleep -eq "last" ]] ; then
+                    echo "Supervisord still working on shutting down. We've waited roughly 60 seconds, we'll let it do its thing from here"
+                    return 1
                 else
-                    if [[ $sleep -eq "last" ]] ; then
-                        echo "Supervisord still working on shutting down. We've waited roughly 60 seconds, we'll let it do its thing from here"
-                        return 1
-                    else
-                        sleep $sleep
-                        total_sleep=$(( $total_sleep + $sleep ))
-                    fi
-
+                    sleep $sleep
+                    total_sleep=$(( $total_sleep + $sleep ))
                 fi
-            done
-        fi
 
-        # always remove the subsys. We might have waited a while, but just remove it at this point.
-        rm -f $LOCKFILE
+            fi
+        done
+    fi
+
+    # always remove the subsys. We might have waited a while, but just remove it at this point.
+    rm -f $LOCKFILE
 }
 
 restart() {
-        stop
-        start
+    stop
+    start
 }
 
 case "$1" in

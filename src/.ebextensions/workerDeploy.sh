@@ -32,9 +32,9 @@ declare -A ary
 readarray -t lines < "bashEnv"
 
 for line in "${lines[@]}"; do
-   key=${line%%=*}
-   value=${line#*=}
-   ary[$key]=$value
+    key=${line%%=*}
+    value=${line#*=}
+    ary[$key]=$value
 done
 
 #if key exists and is true
