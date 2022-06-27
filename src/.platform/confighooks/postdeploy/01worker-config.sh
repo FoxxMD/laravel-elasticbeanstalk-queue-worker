@@ -6,4 +6,4 @@ echo Defaults:root \!requiretty >> /etc/sudoers
 /opt/elasticbeanstalk/bin/get-config environment > jsonEnv
 
 # write supervisor program config to default conf
-php .ebextensions/queue-worker/parseConfig.php
+php .platform/queue-worker/parseConfig.php

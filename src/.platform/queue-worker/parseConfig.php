@@ -40,7 +40,7 @@ echo 'Starting supervisor configuration parsing.' . PHP_EOL;
 $deployDirectory = '/var/app/current';
 
 // set location of our clean supervisor config
-$superLocation = $deployDirectory . '/.ebextensions/queue-worker/supervisord.conf';
+$superLocation = $deployDirectory . '/.platform/queue-worker/supervisord.conf';
 
 // determine config directory
 $configDirectory = null;
