@@ -1,12 +1,12 @@
-# Laravel 5 Queue Worker for Elastic Beanstalk
+# Laravel 5 - 9.x Queue Worker for Elastic Beanstalk
 
-*Use your L5 application as a worker to consume queues on AWS Elasticbeanstalk*
+*Use your Laravel application as a worker to consume queues on AWS Elasticbeanstalk*
 
 Laravel provides a [wonderful array](https://laravel.com/docs/5.1/queues) of drivers for consuming queues within your application as well as [some documentation](https://laravel.com/docs/5.1/queues#supervisor-configuration) on how to manage your application with [Supervisord](http://supervisord.org/) when it is acting as a worker.
 
 Unfortunately that's where the documentation ends. There is no guidance on how to manage multiple workers from a devops context which is a huge bummer. But don't worry fam I've got your covered.
 
-**This package enables your L5 application to manage itself, as a worker, in an [AWS Elasticbeanstalk](https://aws.amazon.com/elasticbeanstalk/) environment.**
+**This package enables your Laravel application to manage itself, as a worker, in an [AWS Elasticbeanstalk](https://aws.amazon.com/elasticbeanstalk/) environment.**
 
 **It provides these features:**
 
@@ -16,20 +16,31 @@ Unfortunately that's where the documentation ends. There is no guidance on how t
   * **Parsing of EB environmental variables to generate supervisor config**
   * **Or using a pre-built supervisor config supplied in project**
 
-# Let's get down to business
+## Amazon Linux 1 deprecation
 
+Amazon Linux 1 (AL1) is going to be unsupported soon, it is advised to migrate to use Amazon Linux 2 (AL2)
+https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/using-features.migration-al.html
+Starts from this release will only support AL2, please use previous releases for use in AL1
+
+# Let's get down to business
 
 ## Installation
 
 Require this package
 
-```php
+```bash
 composer require "foxxmd/laravel-elasticbeanstalk-queue-worker"
+```
+
+or for Amazon Linux 1,
+
+```bash
+composer require "foxxmd/laravel-elasticbeanstalk-queue-worker@^0.3"
 ```
 
 **After installing the package you can either:**
 
-Add the ServiceProvider to the providers array in `config/app.php`
+Add the ServiceProvider to the providers array in `config/app.php` (for Laravel 5.4 or lower)
 
 ```php
 FoxxMD\LaravelElasticBeanstalkQueueWorker\ElasticBeanstalkQueueWorkerProvider::class
@@ -43,9 +54,15 @@ php artisan vendor:publish --tag=ebworker
 
 **OR**
 
-Copy everything from `src/.ebextensions` into your own `.ebextensions` folder manually
+Copy everything from `src/.ebextensions` into your own `.ebextensions` folder and everything from `src/.platform` into your own `.platform` folder manually
 
-**Note:** This library only consists of the EB deploy steps -- the provider is only for a convenience -- so if you want to you can modify/consolidate the `.ebextensions` folder if you're not into me overwriting your stuff.
+**Note:** This library only consists of the EB deploy steps -- the provider is only for a convenience -- so if you want to you can modify/consolidate the `.ebextensions` / `.platform` folder if you're not into me overwriting your stuff.
+
+Don't forget to add +x permission to the EB Platform Hooks scripts
+
+```bash
+find .platform -type f -iname "*.sh" -exec chmod +x {} +
+```
 
 
 ## Configuration
@@ -54,21 +71,25 @@ Copy everything from `src/.ebextensions` into your own `.ebextensions` folder ma
 
 In order for worker deployment to be active you **must** add this environmental to your elasticbeanstalk environment configuration:
 
-```
+```bash
 IS_WORKER = true
 ```
 
 **If this variable is false or not present the deployment will not run**
 
-### Set Queue Driver
+### Set Queue Driver / Connection
 
 Set the [driver](https://laravel.com/docs/5.1/queues#introduction) in your your EB environmental variables:
 
-```
+```bash
 QUEUE_DRIVER = [driver]
 ```
 
-**Note: If no `QUEUE_DRIVER` key is present in your EB environmental variables then `beanstalkd` will be used.**
+Since Laravel 5.7 the variable name got changed so will also support the new name:
+
+```bash
+QUEUE_CONNECTION = [driver]
+```
 
 ### Add Queues
 
@@ -76,7 +97,7 @@ All queues are configured using EB environmental variables with the following sy
 
 **Note**: brackets are placeholders only, do not use them in your actual configuration
 
-```
+```bash
 queue[QueueName]     = [queueName]   # Required. The name of the queue that should be run.
 [QueueName]NumProcs  = [value]       # Optional. The number of instances supervisor should run for this queue. Defaults to 1
 [QueueName]Tries     = [value]       # Optional. The number of times the worker should attempt to run in the event an unexpected exit code occurs. Defaults to 5
@@ -113,13 +134,15 @@ return array(
 
 Now during the deploy process your configuration file will be used instead of generating one.
 
-Note: you can check `eb-activity.log` for your EB environment to verify if the deploy process detected and deployed your file. Search for `Starting supervisor configuration parsing.` in the log.
+Note: you can check `eb-hooks.log` for your EB environment to verify if the deploy process detected and deployed your file. Search for `Starting supervisor configuration parsing.` in the log.
 
 # But how does it work?
 
 Glad you asked. It's a simple process but required a ton of trial and error to get right (kudos to AWS for their lack of documentation)
 
 EB applications can contain a [folder](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/ebextensions.html) that provides advanced configuration for an EB environment, called `.ebextensions`.
+
+EB applications since AL2 can contain [platform hooks](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/platforms-linux-extend.html) that provides hook scripts for an EB environment, called `.platform`.
 
 This package uses AWS commands files in this folder to detect, install, and update supervisor and its configuration and then run it for you.
 
@@ -133,7 +156,7 @@ Supervisor requires port 9001 to be open if you want to access its web monitor. 
 
 Otherwise `parseConfig.php` looks for a json file generated earlier that contains all of the environmental variables configured for elastic beanstalk. It then parses out any queue configurations found (see `Add Queues`) section above and generates a supervisor program for each as well as supplying each program with all the environmental variables set for EB. The program to be generated looks like this:
 
-```
+```bash
 [program:$queue]
 command=php artisan queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --daemon
 directory=/var/app/current/
@@ -168,11 +191,7 @@ Now a bash script `workerDeploy.sh` checks for `IS_WORKER=TRUE` in the EB enviro
 
 # Caveats
 
-This is almost verbatim how I have things setup for another project so some usage is limited because of how it was originally written:
-
-* Queue driver defaults to beanstalkd if not explicitly set
-
-All of these are simple fixes though! Check out issues to see these and more and if you need them please make a PR!
+Please check out issues and if you need them please make a PR!
 
 ## Contributing
 
