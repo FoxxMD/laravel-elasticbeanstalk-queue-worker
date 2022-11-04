@@ -98,7 +98,7 @@ All queues are configured using EB environmental variables with the following sy
 **Note**: brackets are placeholders only, do not use them in your actual configuration
 
 ```bash
-queue[QueueName]     = [queueName]   # Required. The name of the queue that should be run.
+queue[QueueName]     = [driver]      # Required. The name of the queue that should be run.
 [QueueName]NumProcs  = [value]       # Optional. The number of instances supervisor should run for this queue. Defaults to 1
 [QueueName]Tries     = [value]       # Optional. The number of times the worker should attempt to run in the event an unexpected exit code occurs. Defaults to 5
 [QueueName]Sleep     = [value]       # Optional. The number of seconds the worker should sleep if no new jobs are in the queue. Defaults to 5
@@ -106,7 +106,7 @@ queue[QueueName]     = [queueName]   # Required. The name of the queue that shou
 [QueueName]Delay     = [value]       # Optional. Time in seconds a job should be delayed before returning to the ready queue. Defaults to 0
 ```
 
-Add one `queue[QueueName] = [queueName]` entry in your EB environmental variables for each queue you want to run. The rest of the parameters are optional.
+Add one `queue[QueueName] = [driver]` entry in your EB environmental variables for each queue you want to run. The rest of the parameters are optional.
 
 That's it! On your next deploy supervisor will have its configuration updated/generated and start chugging along on your queues.
 
