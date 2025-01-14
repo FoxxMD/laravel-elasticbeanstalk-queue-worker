@@ -11,8 +11,8 @@
         }
     ],
     "require": {
-        "illuminate/console": "5 - 9",
-        "illuminate/support": "5 - 9"
+        "illuminate/console": "6 - 11",
+        "illuminate/support": "6 - 11"
     },
     "autoload": {
         "psr-4": {

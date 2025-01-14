@@ -1,8 +1,8 @@
-# Laravel 5 - 9.x Queue Worker for Elastic Beanstalk
+# Laravel 6 - 11.x Queue Worker for Elastic Beanstalk
 
 *Use your Laravel application as a worker to consume queues on AWS Elasticbeanstalk*
 
-Laravel provides a [wonderful array](https://laravel.com/docs/5.1/queues) of drivers for consuming queues within your application as well as [some documentation](https://laravel.com/docs/5.1/queues#supervisor-configuration) on how to manage your application with [Supervisord](http://supervisord.org/) when it is acting as a worker.
+Laravel provides a [wonderful array](https://laravel.com/docs/11.x/queues) of drivers for consuming queues within your application as well as [some documentation](https://laravel.com/docs/11.x/queues#supervisor-configuration) on how to manage your application with [Supervisord](http://supervisord.org/) when it is acting as a worker.
 
 Unfortunately that's where the documentation ends. There is no guidance on how to manage multiple workers from a devops context which is a huge bummer. But don't worry fam I've got your covered.
 
@@ -16,11 +16,11 @@ Unfortunately that's where the documentation ends. There is no guidance on how t
   * **Parsing of EB environmental variables to generate supervisor config**
   * **Or using a pre-built supervisor config supplied in project**
 
-## Amazon Linux 1 deprecation
+## Amazon Linux 1 is deprecated and Amazon Linux 2023 is recommended
 
-Amazon Linux 1 (AL1) is going to be unsupported soon, it is advised to migrate to use Amazon Linux 2 (AL2)
+Amazon Linux 1 (AL1) is already retired, even Amazon Linux 2 (AL2) will soon going to be unsupported too, so it's recommended to migrate to use Amazon Linux 2023 (AL2023)
 https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/using-features.migration-al.html
-Starts from this release will only support AL2, please use previous releases for use in AL1
+Starts from this release will only support AL2023, please use previous releases for use in AL2, with this release will also drop support for Laravel 5 (PHP 7) since EB only support starting from PHP 8.1
 
 # Let's get down to business
 
@@ -32,21 +32,15 @@ Require this package
 composer require "foxxmd/laravel-elasticbeanstalk-queue-worker"
 ```
 
-or for Amazon Linux 1,
+or for Amazon Linux 2,
 
 ```bash
-composer require "foxxmd/laravel-elasticbeanstalk-queue-worker@^0.3"
+composer require "foxxmd/laravel-elasticbeanstalk-queue-worker@^1.0"
 ```
 
 **After installing the package you can either:**
 
-Add the ServiceProvider to the providers array in `config/app.php` (for Laravel 5.4 or lower)
-
-```php
-FoxxMD\LaravelElasticBeanstalkQueueWorker\ElasticBeanstalkQueueWorkerProvider::class
-```
-
-Then, publish using artisan
+Publish using artisan
 
 ```php
 php artisan vendor:publish --tag=ebworker
@@ -58,7 +52,7 @@ Copy everything from `src/.ebextensions` into your own `.ebextensions` folder an
 
 **Note:** This library only consists of the EB deploy steps -- the provider is only for a convenience -- so if you want to you can modify/consolidate the `.ebextensions` / `.platform` folder if you're not into me overwriting your stuff.
 
-Don't forget to add +x permission to the EB Platform Hooks scripts
+Don't forget to add +x permission to the EB Platform Hooks scripts ([no longer required for Amazon Linux platform that released on or after April 29, 2022](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/platforms-linux-extend.hooks.html#platforms-linux-extend.hooks.more))
 
 ```bash
 find .platform -type f -iname "*.sh" -exec chmod +x {} +
@@ -79,13 +73,7 @@ IS_WORKER = true
 
 ### Set Queue Driver / Connection
 
-Set the [driver](https://laravel.com/docs/5.1/queues#introduction) in your your EB environmental variables:
-
-```bash
-QUEUE_DRIVER = [driver]
-```
-
-Since Laravel 5.7 the variable name got changed so will also support the new name:
+Set the [driver](https://laravel.com/docs/11.x/queues#driver-prerequisites) in your your EB environmental variables:
 
 ```bash
 QUEUE_CONNECTION = [driver]
@@ -98,7 +86,7 @@ All queues are configured using EB environmental variables with the following sy
 **Note**: brackets are placeholders only, do not use them in your actual configuration
 
 ```bash
-queue[QueueName]     = [queueName]   # Required. The name of the queue that should be run.
+queue[QueueName]     = [driver]   # Required. The name of the queue that should be run. Value is driver/connection name
 [QueueName]NumProcs  = [value]       # Optional. The number of instances supervisor should run for this queue. Defaults to 1
 [QueueName]Tries     = [value]       # Optional. The number of times the worker should attempt to run in the event an unexpected exit code occurs. Defaults to 5
 [QueueName]Sleep     = [value]       # Optional. The number of seconds the worker should sleep if no new jobs are in the queue. Defaults to 5
@@ -106,7 +94,7 @@ queue[QueueName]     = [queueName]   # Required. The name of the queue that shou
 [QueueName]Delay     = [value]       # Optional. Time in seconds a job should be delayed before returning to the ready queue. Defaults to 0
 ```
 
-Add one `queue[QueueName] = [queueName]` entry in your EB environmental variables for each queue you want to run. The rest of the parameters are optional.
+Add one `queue[QueueName] = [driver]` entry in your EB environmental variables for each queue you want to run. The rest of the parameters are optional.
 
 That's it! On your next deploy supervisor will have its configuration updated/generated and start chugging along on your queues.
 
@@ -158,11 +146,11 @@ Otherwise `parseConfig.php` looks for a json file generated earlier that contain
 
 ```bash
 [program:$queue]
-command=php artisan queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --daemon
+process_name=%(program_name)s_%(process_num)02d
+command=php artisan queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --delay=$delay --daemon
 directory=/var/app/current/
 autostart=true
 autorestart=true
-process_name=$queue-%(process_num)s
 numprocs=$numProcs
 startsecs=$startSecs
 user=webapp
@@ -173,16 +161,16 @@ After parsing all queues it then appends the programs to a clean `supervisord.co
 
 ### 3. Deploy Supervisor
 
-Now a bash script `workerDeploy.sh` checks for `IS_WORKER=TRUE` in the EB environmental variables:
+Now a bash script `02worker-deploy.sh` checks for `IS_WORKER=TRUE` in the EB environmental variables:
 
-* If none is found the script does nothing and exists.
+* If none is found the script does nothing and exits.
 * If it is found
-  * And there is no `init.d` script
-    * Supervisor is installed using pip and the custom `supervisord` init script in this project is copied to `/etc/init.d`
+  * And there is no `supervisord.conf`
+    * Supervisor is installed using pip
     * Configuration is parsed
-    * Supervisor is started
     * Supervisor is set to start at boot
-  * And there is an `init.d` script
+    * Supervisor is started
+  * And there is an `supervisord.conf`
     * Supervisor is stopped
     * Configuration is parsed
     * Laravel artisan is used to restart the queue to refresh the daemon

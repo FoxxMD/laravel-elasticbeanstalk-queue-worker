@@ -3,27 +3,27 @@
 #
 # Description: For use with AWS elasticbeanstalk and Laravel. As part of a deployment will either skip, install,
 #              or update supervisord depending on environmental variables set in EB.
-#              This script has been modified as necessary to support Amazon Linux 2
+#              This script has been modified as necessary to support Amazon Linux 2023
 
 updateSupervisor(){
     cp .platform/queue-worker/supervisord.conf /etc/supervisord.conf
-    sudo service supervisord stop
+    systemctl stop supervisord
     php /var/app/current/artisan queue:restart # If this worker is running in daemon mode (most likely) we need to restart it with the new build
     echo "Sleeping a few seconds to make sure supervisor shuts down..." # https://github.com/Supervisor/supervisor/issues/48#issuecomment-2684400
     sleep 5
-    sudo service supervisord start
+    systemctl start supervisord
 }
 
 installSupervisor(){
-    easy_install supervisor
-    cp /var/app/current/.platform/queue-worker/supervisord /etc/init.d/supervisord
-    chmod 777 /etc/init.d/supervisord
-    mkdir -m 766 /var/log/supervisor
-    umask 022
-    touch /var/log/supervisor/supervisord.log
+    dnf install python3-pip -y
+    pip install supervisor
+    mkdir -p /var/log/supervisor
+    mkdir -p /var/run/supervisor
+    cp .platform/queue-worker/supervisord.service /usr/lib/systemd/system/supervisord.service
     cp .platform/queue-worker/supervisord.conf /etc/supervisord.conf
-    /etc/init.d/supervisord  start
-    sudo chkconfig supervisord  on
+    systemctl daemon-reload
+    systemctl enable supervisord
+    systemctl start supervisord
 }
 
 /opt/elasticbeanstalk/bin/get-config --output YAML environment | sed -e 's/^\(.*\): /\1=/g' > bashEnv
@@ -47,7 +47,7 @@ then
         echo 'Found worker key!';
         echo 'Starting worker deploy process...';
 
-        if [ -f /etc/init.d/supervisord ]
+        if [ -f /etc/supervisord.conf ]
         then
            echo 'Config found. Supervisor already installed';
            updateSupervisor;

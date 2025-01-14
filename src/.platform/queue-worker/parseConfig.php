@@ -1,7 +1,8 @@
 <?php
 
-function generateProgram($connection, $queue, $tries, $sleep, $numProcs, $delay, $startSecs, $environmentVal) {
-    $queueVal = $queue !== null ? " --queue=$queue": '';
+function generateProgram($connection, $queue, $tries, $sleep, $numProcs, $delay, $startSecs, $environmentVal)
+{
+    $queueVal = $queue !== null ? " --queue=$queue" : '';
     $program = <<<EOT
 
 [program:$queue]
@@ -20,7 +21,8 @@ EOT;
     return $program;
 }
 
-function getEBWorkerConfig($path) {
+function getEBWorkerConfig($path)
+{
     if (null === $path) {
         return null;
     } else {
@@ -84,7 +86,7 @@ if (null !== $relativeConfigFilePath) {
     foreach ($envVars as $key => $val) {
         if (
             ctype_alnum($val) // alphanumeric doesn't need quotes
-            || (strpos($val, '"') === 0 && strrpos($val, '"') === count($val) -1) // if the value is already quoted don't double-quote it
+            || (strpos($val, '"') === 0 && strrpos($val, '"') === count($val) - 1) // if the value is already quoted don't double-quote it
         ) {
             $formattedVal = $val;
         } else { // otherwise put everything in quotes for environment param http://supervisord.org/configuration.html#program-x-section-values
@@ -97,15 +99,12 @@ if (null !== $relativeConfigFilePath) {
     $programs = '';
 
     $isBeanstalk = false;
-    if (
-        !empty($lowerEnvVars['queue_connection']) && $lowerEnvVars['queue_connection'] === 'beanstalkd' ||
-        !empty($lowerEnvVars['queue_driver']) && $lowerEnvVars['queue_driver'] === 'beanstalkd'
-    ) {
+    if (!empty($lowerEnvVars['queue_connection']) && $lowerEnvVars['queue_connection'] === 'beanstalkd') {
         $isBeanstalk = true;
     }
 
     foreach ($lowerEnvVars as $key => $val) {
-        if (strpos($key, 'queue') !== false && !in_array($key, ['queue_driver', 'queue_connection'])) {
+        if (substr($key, 0, 5) === 'queue' && $key !== 'queue_connection') {
             $tryKey       = substr($key, 5) . 'tries'; //get queue $key + tries to see if custom tries is set
             $sleepKey     = substr($key, 5) . 'sleep'; //get queue $key + sleep to see if custom sleep is set
             $numProcKey   = substr($key, 5) . 'numprocs'; //get queue $key + num process to see if custom number of processes is set
@@ -117,7 +116,7 @@ if (null !== $relativeConfigFilePath) {
             $numProcs   = isset($lowerEnvVars[$numProcKey]) ? $lowerEnvVars[$numProcKey] : 1;
             $startSecs  = isset($lowerEnvVars[$startSecsKey]) ? $lowerEnvVars[$startSecsKey] : 1;
             $delay      = isset($lowerEnvVars[$delayKey]) ? $lowerEnvVars[$delayKey] : 0;
-            // if using beanstalk connection should always be beanstalkd and specify tube in queue, otherwise us queue name as connection
+            // if using beanstalk connection should always be beanstalkd and specify tube in queue, otherwise use queue driver name as connection
             $connection = $isBeanstalk ? 'beanstalkd' : $val;
             // if not using beanstalk we don't need queue probably
             $queue = $isBeanstalk ? $val : null;
