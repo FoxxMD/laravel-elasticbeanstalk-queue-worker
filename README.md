@@ -1,8 +1,8 @@
-# Laravel 6 - 11.x Queue Worker for Elastic Beanstalk
+# Laravel 6 - 12.x Queue Worker for Elastic Beanstalk
 
 *Use your Laravel application as a worker to consume queues on AWS Elasticbeanstalk*
 
-Laravel provides a [wonderful array](https://laravel.com/docs/11.x/queues) of drivers for consuming queues within your application as well as [some documentation](https://laravel.com/docs/11.x/queues#supervisor-configuration) on how to manage your application with [Supervisord](http://supervisord.org/) when it is acting as a worker.
+Laravel provides a [wonderful array](https://laravel.com/docs/12.x/queues) of drivers for consuming queues within your application as well as [some documentation](https://laravel.com/docs/12.x/queues#supervisor-configuration) on how to manage your application with [Supervisord](http://supervisord.org/) when it is acting as a worker.
 
 Unfortunately that's where the documentation ends. There is no guidance on how to manage multiple workers from a devops context which is a huge bummer. But don't worry fam I've got your covered.
 
@@ -42,7 +42,7 @@ composer require "foxxmd/laravel-elasticbeanstalk-queue-worker@^1.0"
 
 Publish using artisan
 
-```php
+```bash
 php artisan vendor:publish --tag=ebworker
 ```
 
@@ -73,7 +73,7 @@ IS_WORKER = true
 
 ### Set Queue Driver / Connection
 
-Set the [driver](https://laravel.com/docs/11.x/queues#driver-prerequisites) in your your EB environmental variables:
+Set the [driver](https://laravel.com/docs/12.x/queues#driver-prerequisites) in your your EB environmental variables:
 
 ```bash
 QUEUE_CONNECTION = [driver]
