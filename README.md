@@ -1,12 +1,12 @@
-# Laravel 6 - 12.x Queue Worker for Elastic Beanstalk
+# Laravel 6 - 13.x Queue Worker for Elastic Beanstalk
 
-*Use your Laravel application as a worker to consume queues on AWS Elasticbeanstalk*
+*Use your Laravel application as a worker to consume queues on AWS Elastic Beanstalk*
 
-Laravel provides a [wonderful array](https://laravel.com/docs/12.x/queues) of drivers for consuming queues within your application as well as [some documentation](https://laravel.com/docs/12.x/queues#supervisor-configuration) on how to manage your application with [Supervisord](http://supervisord.org/) when it is acting as a worker.
+Laravel provides a [wonderful array](https://laravel.com/docs/13.x/queues) of drivers for consuming queues within your application as well as [some documentation](https://laravel.com/docs/13.x/queues#supervisor-configuration) on how to manage your application with [Supervisord](http://supervisord.org/) when it is acting as a worker.
 
 Unfortunately that's where the documentation ends. There is no guidance on how to manage multiple workers from a devops context which is a huge bummer. But don't worry fam I've got your covered.
 
-**This package enables your Laravel application to manage itself, as a worker, in an [AWS Elasticbeanstalk](https://aws.amazon.com/elasticbeanstalk/) environment.**
+**This package enables your Laravel application to manage itself, as a worker, in an [AWS Elastic Beanstalk](https://aws.amazon.com/elasticbeanstalk/) environment.**
 
 **It provides these features:**
 
@@ -16,11 +16,13 @@ Unfortunately that's where the documentation ends. There is no guidance on how t
   * **Parsing of EB environmental variables to generate supervisor config**
   * **Or using a pre-built supervisor config supplied in project**
 
-## Amazon Linux 1 is deprecated and Amazon Linux 2023 is recommended
+## Amazon Linux 1 and Amazon Linux 2 are deprecated — Amazon Linux 2023 is required
 
-Amazon Linux 1 (AL1) is already retired, even Amazon Linux 2 (AL2) will soon going to be unsupported too, so it's recommended to migrate to use Amazon Linux 2023 (AL2023)
+Amazon Linux 1 (AL1) is retired and Amazon Linux 2 (AL2) PHP platforms were removed from Elastic Beanstalk on April 16, 2026. You must use Amazon Linux 2023 (AL2023).
 https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/using-features.migration-al.html
-Starts from this release will only support AL2023, please use previous releases for use in AL2, with this release will also drop support for Laravel 5 (PHP 7) since EB only support starting from PHP 8.1
+https://docs.aws.amazon.com/elasticbeanstalk/latest/platforms/platform-history-php.html
+
+This release only supports AL2023. Please use previous releases for AL2.
 
 # Let's get down to business
 
@@ -63,7 +65,7 @@ find .platform -type f -iname "*.sh" -exec chmod +x {} +
 
 ### Enable Worker Mode
 
-In order for worker deployment to be active you **must** add this environmental to your elasticbeanstalk environment configuration:
+In order for worker deployment to be active you **must** add this environmental to your Elastic Beanstalk environment configuration:
 
 ```bash
 IS_WORKER = true
@@ -73,7 +75,7 @@ IS_WORKER = true
 
 ### Set Queue Driver / Connection
 
-Set the [driver](https://laravel.com/docs/12.x/queues#driver-prerequisites) in your your EB environmental variables:
+Set the [driver](https://laravel.com/docs/13.x/queues#driver-prerequisites) in your EB environmental variables:
 
 ```bash
 QUEUE_CONNECTION = [driver]

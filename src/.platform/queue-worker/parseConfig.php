@@ -7,7 +7,7 @@ function generateProgram($connection, $queue, $tries, $sleep, $numProcs, $delay,
 
 [program:$queue]
 process_name=%(program_name)s_%(process_num)02d
-command=php artisan queue:work $connection$queueVal --tries=$tries --sleep=$sleep --delay=$delay --daemon
+command=php artisan queue:work $connection$queueVal --tries=$tries --sleep=$sleep --delay=$delay
 directory=/var/app/current/
 autostart=true
 autorestart=true
