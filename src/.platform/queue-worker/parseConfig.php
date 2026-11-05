@@ -1,13 +1,21 @@
 <?php
 
-function generateProgram($connection, $queue, $tries, $sleep, $numProcs, $delay, $startSecs, $environmentVal)
+function generateProgram($connection, $queue, $tries, $sleep, $numProcs, $delay, $startSecs, $maxJobs, $environmentVal)
 {
     $queueVal = $queue !== null ? " --queue=$queue" : '';
+    // --max-jobs bounds a worker's lifetime: the process exits cleanly after
+    // this many jobs and supervisord restarts it immediately (autorestart). A
+    // fresh process re-reads config/database state, so values changed directly
+    // in the database are picked up on restart instead of being held by a
+    // long-lived worker. It is opt-in: when the override is unset the flag is
+    // omitted entirely and the worker runs with the framework default
+    // (unlimited lifetime), preserving prior behaviour.
+    $maxJobsVal = $maxJobs !== null ? " --max-jobs=$maxJobs" : '';
     $program = <<<EOT
 
 [program:$queue]
 process_name=%(program_name)s_%(process_num)02d
-command=php artisan queue:work $connection$queueVal --tries=$tries --sleep=$sleep --delay=$delay
+command=php artisan queue:work $connection$queueVal --tries=$tries --sleep=$sleep --delay=$delay$maxJobsVal
 directory=/var/app/current/
 autostart=true
 autorestart=true
@@ -110,12 +118,14 @@ if (null !== $relativeConfigFilePath) {
             $numProcKey   = substr($key, 5) . 'numprocs'; //get queue $key + num process to see if custom number of processes is set
             $startSecsKey = substr($key, 5) . 'startsecs'; //get queue $key + number of seconds the process should stay up
             $delayKey     = substr($key, 5) . 'delay'; //get queue $key + delay in seconds before a job should re-enter the ready queue
+            $maxJobsKey   = substr($key, 5) . 'maxjobs'; //get queue $key + max jobs before the worker restarts (bounds worker lifetime); unset = unlimited (flag omitted)
 
             $tries      = isset($lowerEnvVars[$tryKey]) ? $lowerEnvVars[$tryKey] : 5;
             $sleep      = isset($lowerEnvVars[$sleepKey]) ? $lowerEnvVars[$sleepKey] : 5;
             $numProcs   = isset($lowerEnvVars[$numProcKey]) ? $lowerEnvVars[$numProcKey] : 1;
             $startSecs  = isset($lowerEnvVars[$startSecsKey]) ? $lowerEnvVars[$startSecsKey] : 1;
             $delay      = isset($lowerEnvVars[$delayKey]) ? $lowerEnvVars[$delayKey] : 0;
+            $maxJobs    = isset($lowerEnvVars[$maxJobsKey]) ? $lowerEnvVars[$maxJobsKey] : null;
             // if using beanstalk connection should always be beanstalkd and specify tube in queue, otherwise use queue driver name as connection
             $connection = $isBeanstalk ? 'beanstalkd' : $val;
             // if not using beanstalk we don't need queue probably
@@ -123,7 +133,7 @@ if (null !== $relativeConfigFilePath) {
             $programEnvArray = $envKvArray;
             // if any vars need to be specific per worker this is where to put them
             // $programEnvArray[] =
-            $programs   .= generateProgram($connection, $queue, $tries, $sleep, $numProcs, $delay, $startSecs, implode(',', $programEnvArray));
+            $programs   .= generateProgram($connection, $queue, $tries, $sleep, $numProcs, $delay, $startSecs, $maxJobs, implode(',', $programEnvArray));
         }
     }
 }

@@ -94,7 +94,10 @@ queue[QueueName]     = [driver]   # Required. The name of the queue that should 
 [QueueName]Sleep     = [value]       # Optional. The number of seconds the worker should sleep if no new jobs are in the queue. Defaults to 5
 [QueueName]StartSecs = [value]       # Optional. How long a job should run for to be considered successful. Defaults to 1
 [QueueName]Delay     = [value]       # Optional. Time in seconds a job should be delayed before returning to the ready queue. Defaults to 0
+[QueueName]MaxJobs   = [value]       # Optional. Restart the worker after processing this many jobs (passed as --max-jobs). Unset = no limit (flag omitted), the worker runs indefinitely.
 ```
+
+**About `MaxJobs`:** a worker with no `--max-jobs` runs forever, so it keeps using the config and database state it loaded at boot until it is manually restarted. Setting `MaxJobs` makes each worker exit cleanly after that many jobs; supervisor restarts it immediately (`autorestart=true`), so the fresh process reloads config and picks up values changed directly in the database. It also caps memory growth on long-running workers. It is opt-in to preserve existing behaviour: leave it unset and the worker runs with no job limit as before.
 
 Add one `queue[QueueName] = [driver]` entry in your EB environmental variables for each queue you want to run. The rest of the parameters are optional.
 
@@ -149,7 +152,7 @@ Otherwise `parseConfig.php` looks for a json file generated earlier that contain
 ```bash
 [program:$queue]
 process_name=%(program_name)s_%(process_num)02d
-command=php artisan queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --delay=$delay --daemon
+command=php artisan queue:work $connection --queue=$queue --tries=$tries --sleep=$sleep --delay=$delay
 directory=/var/app/current/
 autostart=true
 autorestart=true
@@ -158,6 +161,8 @@ startsecs=$startSecs
 user=webapp
 environment=$environmentVal
 ```
+
+`--max-jobs=$maxJobs` is appended to the `command` only when `[QueueName]MaxJobs` is set; when it is unset the flag is omitted and the worker runs with no job limit.
 
 After parsing all queues it then appends the programs to a clean `supervisord.conf` file in the same directory.
 
